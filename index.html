@@ -1,0 +1,49 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>गढ़वळि समीक्षा</title>
+<style>
+:root{--bg:#faf8f3;--card:#fff;--ink:#222;--muted:#6b6b6b;--line:#ddd;--ok:#2e7d32;--fix:#1565c0;--bad:#c62828;--skip:#8d8d8d}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--card:#222;--ink:#eee;--muted:#aaa;--line:#444}}
+body{font-family:system-ui,'Noto Sans Devanagari',sans-serif;max-width:720px;margin:0 auto;padding:16px;background:var(--bg);color:var(--ink)}
+h1{font-size:1.15rem;color:var(--muted);display:flex;justify-content:space-between;align-items:center;margin:8px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+textarea{width:100%;box-sizing:border-box;font-size:1.3rem;line-height:1.75;padding:12px;border:1px solid var(--line);border-radius:10px;min-height:130px;font-family:inherit;background:var(--card);color:var(--ink)}
+button{font-size:1.05rem;padding:13px 16px;border:0;border-radius:12px;margin:8px 8px 0 0;cursor:pointer;color:#fff}
+.ok{background:var(--ok)}.fix{background:var(--fix)}.bad{background:var(--bad)}.skip{background:var(--skip)}
+.who button{background:#444;opacity:.6}.who button.on{opacity:1;background:var(--fix)}
+.meta{color:var(--muted);font-size:.92rem}.src{font-size:1.2rem;background:rgba(21,101,192,.08);padding:12px;border-radius:10px;line-height:1.7}
+audio{width:100%;margin:8px 0}.pill{background:var(--fix);color:#fff;border-radius:999px;padding:4px 12px;font-size:.9rem}
+.help{font-size:1rem;line-height:1.6}
+</style></head><body>
+<h1>गढ़वळि समीक्षा <span class="pill" id="count">0</span></h1>
+<div class="card who"><div class="meta">आप कौन हैं?</div>
+<button data-who="papa">पापा</button><button data-who="mummy">मम्मी</button><button data-who="deepak">दीपक</button></div>
+<div class="card"><button class="fix" onclick="setMode('t')">🎧 आवाज़ सुधार</button><button class="fix" onclick="setMode('x')">📝 अनुवाद जाँच</button>
+<div class="help meta" id="help"></div></div>
+<div class="card" id="work"><p class="meta">ऊपर अपना नाम चुनें, फिर काम चुनें।</p></div>
+<script>
+let M=null,mode='t',who=localStorage.getItem('who')||'',cur=null,n=+localStorage.getItem('n_'+who)||0,done=new Set(JSON.parse(localStorage.getItem('done')||'[]'));
+const $=s=>document.querySelector(s);
+document.querySelectorAll('.who button').forEach(b=>{b.onclick=()=>{who=b.dataset.who;localStorage.setItem('who',who);n=+localStorage.getItem('n_'+who)||0;$('#count').textContent=n;paintWho();next()};});
+function paintWho(){document.querySelectorAll('.who button').forEach(b=>b.classList.toggle('on',b.dataset.who===who))}
+async function load(){M=await (await fetch('manifest.json')).json();paintWho();$('#count').textContent=n;if(who)next()}
+function setMode(m){mode=m;$('#help').textContent=m==='t'?'क्लिप सुनें। नीचे मशीन ने जो लिखा है, गलत शब्द ठीक करें। सही हो तो "बिलकुल सही" दबाएँ।':'ऊपर वाला वाक्य पढ़ें, नीचे मशीन का गढ़वळि अनुवाद है। ठीक हो तो "अच्छा", नहीं तो सुधारें या "गलत" दबाएँ।';next()}
+function next(){if(!who){$('#work').innerHTML='<p class="meta">पहले अपना नाम चुनें।</p>';return}
+ const list=mode==='t'?M.transcripts:M.translations;cur=list.find(x=>!done.has(x.id));const w=$('#work');
+ if(!cur){w.innerHTML='<p>सब हो गया 🎉 धन्यवाद!</p>';return}
+ if(mode==='t')w.innerHTML=`<audio controls autoplay src="${cur.clip}"></audio><p class="meta">भरोसा ${Math.round(cur.conf*100)}%</p>
+  <textarea id="txt">${cur.text}</textarea>
+  <button class="ok" onclick="save('correct')">✅ बिलकुल सही</button><button class="fix" onclick="save('fixed')">💾 सुधार सेव</button>
+  <button class="bad" onclick="save('unusable')">🚫 समझ नहीं आया</button><button class="skip" onclick="save('skip')">⏭ छोड़ें</button>`;
+ else w.innerHTML=`<p class="meta">${cur.src_lang==='hin'?'हिंदी':'English'} → गढ़वळि</p><div class="src">${cur.src}</div>
+  <textarea id="txt">${cur.hyp}</textarea>
+  <button class="ok" onclick="save('good')">✅ अच्छा अनुवाद</button><button class="fix" onclick="save('fixed')">💾 सुधार सेव</button>
+  <button class="bad" onclick="save('bad')">❌ गलत</button><button class="skip" onclick="save('skip')">⏭ छोड़ें</button>`;}
+async function save(verdict){const rec={mode,who,verdict,id:cur.id,text:$('#txt')?.value||'',orig:mode==='t'?cur.text:cur.hyp,src:cur.src||null,ts:Date.now()};
+ done.add(cur.id);localStorage.setItem('done',JSON.stringify([...done]));
+ if(verdict!=='skip'){n++;localStorage.setItem('n_'+who,n);$('#count').textContent=n;queue(rec)}next()}
+function queue(rec){const q=JSON.parse(localStorage.getItem('q')||'[]');q.push(rec);localStorage.setItem('q',JSON.stringify(q));flush()}
+let flushing=false;async function flush(){if(flushing)return;flushing=true;try{let q=JSON.parse(localStorage.getItem('q')||'[]');
+ while(q.length){const r=await fetch('/api/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(q.slice(0,20))});
+  if(!r.ok)break;q=q.slice(20);localStorage.setItem('q',JSON.stringify(q))}}catch(e){}finally{flushing=false}}
+setInterval(flush,30000);load();
+</script></body></html>

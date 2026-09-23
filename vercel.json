@@ -1,0 +1,1 @@
+{ "functions": { "api/save.js": { "maxDuration": 15 } } }
