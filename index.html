@@ -18,7 +18,7 @@ audio{width:100%;margin:8px 0}.pill{background:var(--fix);color:#fff;border-radi
 <div class="card who"><div class="meta">आप कौन हैं?</div>
 <button data-who="papa">पापा</button><button data-who="mummy">मम्मी</button><button data-who="deepak">दीपक</button></div>
 <div class="card"><button class="fix" onclick="setMode('t')">🎧 आवाज़ सुधार</button><button class="fix" onclick="setMode('x')">📝 अनुवाद जाँच</button>
-<div class="help meta" id="help"></div></div>
+<div class="help meta" id="help"></div><div class="help meta" style="margin-top:8px">⌨️ हिंदी में टाइप करने के लिए फ़ोन में "Hindi (ABC → हिंदी)" कीबोर्ड जोड़ें: अंग्रेज़ी अक्षर टाइप करें, देवनागरी सुझाव मिलेंगे। अंग्रेज़ी अक्षरों में लिखना भी चलेगा।</div></div>
 <div class="card" id="work"><p class="meta">ऊपर अपना नाम चुनें, फिर काम चुनें।</p></div>
 <script>
 let M=null,mode='t',who=localStorage.getItem('who')||'',cur=null,n=+localStorage.getItem('n_'+who)||0,done=new Set(JSON.parse(localStorage.getItem('done')||'[]'));
