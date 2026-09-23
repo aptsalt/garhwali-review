@@ -14,7 +14,7 @@ button{font-size:1.05rem;padding:13px 16px;border:0;border-radius:12px;margin:8p
 audio{width:100%;margin:8px 0}.pill{background:var(--fix);color:#fff;border-radius:999px;padding:4px 12px;font-size:.9rem}
 .help{font-size:1rem;line-height:1.6}
 </style></head><body>
-<h1>गढ़वळि समीक्षा <span class="pill" id="count">0</span></h1>
+<h1>गढ़वळि समीक्षा <span><span class="pill" id="count">0</span> <button class="fix" style="margin:0;padding:8px 12px;font-size:.95rem" onclick="share()">📤 दीपक को भेजें</button></span></h1>
 <div class="card who"><div class="meta">आप कौन हैं?</div>
 <button data-who="papa">पापा</button><button data-who="mummy">मम्मी</button><button data-who="deepak">दीपक</button></div>
 <div class="card"><button class="fix" onclick="setMode('t')">🎧 आवाज़ सुधार</button><button class="fix" onclick="setMode('x')">📝 अनुवाद जाँच</button>
@@ -25,7 +25,7 @@ let M=null,mode='t',who=localStorage.getItem('who')||'',cur=null,n=+localStorage
 const $=s=>document.querySelector(s);
 document.querySelectorAll('.who button').forEach(b=>{b.onclick=()=>{who=b.dataset.who;localStorage.setItem('who',who);n=+localStorage.getItem('n_'+who)||0;$('#count').textContent=n;paintWho();next()};});
 function paintWho(){document.querySelectorAll('.who button').forEach(b=>b.classList.toggle('on',b.dataset.who===who))}
-async function load(){M=await (await fetch('manifest.json')).json();paintWho();$('#count').textContent=n;if(who)next()}
+let SAVE='';async function load(){try{const c=await (await fetch('config.json',{cache:'no-store'})).json();SAVE=c.save_url||''}catch(e){}M=await (await fetch('manifest.json')).json();paintWho();$('#count').textContent=n;if(who)next()}
 function setMode(m){mode=m;$('#help').textContent=m==='t'?'क्लिप सुनें। नीचे मशीन ने जो लिखा है, गलत शब्द ठीक करें। सही हो तो "बिलकुल सही" दबाएँ।':'ऊपर वाला वाक्य पढ़ें, नीचे मशीन का गढ़वळि अनुवाद है। ठीक हो तो "अच्छा", नहीं तो सुधारें या "गलत" दबाएँ।';next()}
 function next(){if(!who){$('#work').innerHTML='<p class="meta">पहले अपना नाम चुनें।</p>';return}
  const list=mode==='t'?M.transcripts:M.translations;cur=list.find(x=>!done.has(x.id));const w=$('#work');
@@ -41,9 +41,13 @@ function next(){if(!who){$('#work').innerHTML='<p class="meta">पहले अ�
 async function save(verdict){const rec={mode,who,verdict,id:cur.id,text:$('#txt')?.value||'',orig:mode==='t'?cur.text:cur.hyp,src:cur.src||null,ts:Date.now()};
  done.add(cur.id);localStorage.setItem('done',JSON.stringify([...done]));
  if(verdict!=='skip'){n++;localStorage.setItem('n_'+who,n);$('#count').textContent=n;queue(rec)}next()}
-function queue(rec){const q=JSON.parse(localStorage.getItem('q')||'[]');q.push(rec);localStorage.setItem('q',JSON.stringify(q));flush()}
+function queue(rec){const q=JSON.parse(localStorage.getItem('q')||'[]');q.push(rec);localStorage.setItem('q',JSON.stringify(q));const all=JSON.parse(localStorage.getItem('all')||'[]');all.push(rec);localStorage.setItem('all',JSON.stringify(all));flush()}
 let flushing=false;async function flush(){if(flushing)return;flushing=true;try{let q=JSON.parse(localStorage.getItem('q')||'[]');
- while(q.length){const r=await fetch('/api/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(q.slice(0,20))});
+ while(q.length){if(!SAVE)break;const r=await fetch(SAVE+'/api/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(q.slice(0,20))});
   if(!r.ok)break;q=q.slice(20);localStorage.setItem('q',JSON.stringify(q))}}catch(e){}finally{flushing=false}}
 setInterval(flush,30000);load();
+async function share(){const all=JSON.parse(localStorage.getItem('all')||'[]');if(!all.length){alert('अभी कुछ नहीं है');return}
+ const txt=all.map(r=>JSON.stringify(r)).join('\n');const f=new File([txt],`garhwali-review-${who}-${new Date().toISOString().slice(0,10)}.jsonl`,{type:'text/plain'});
+ if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:'गढ़वळि समीक्षा'});return}catch(e){}}
+ const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.click()}
 </script></body></html>
