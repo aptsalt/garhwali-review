@@ -22,10 +22,13 @@ table{width:100%;border-collapse:collapse;font-size:.92rem}th,td{text-align:left
 .jl{list-style:none;padding:0;margin:0;border-left:2px solid var(--line)}.jl li{position:relative;padding:4px 0 14px 18px}.jl li:before{content:"";position:absolute;left:-7px;top:11px;width:12px;height:12px;border-radius:50%;background:var(--series-1);border:2px solid var(--surface-1)}
 .jl .t{font-size:.8rem;color:var(--text-muted)}.jl b{display:block}.jl p{margin:2px 0 0;color:var(--text-secondary)}
 .best{color:var(--good);font-weight:600}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:.78rem;line-height:1.45;overflow:auto;max-height:220px;margin:8px 0 0;color:var(--text-secondary)}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.75rem;font-weight:600}.p-done{background:color-mix(in oklab,var(--good) 18%,transparent);color:var(--good)}.p-running{background:color-mix(in oklab,var(--series-1) 18%,transparent);color:var(--series-1)}.p-pending{background:var(--grid);color:var(--text-muted)}.p-failed{background:color-mix(in oklab,var(--critical) 18%,transparent);color:var(--critical)}
 </style></head><body><div class="wrap">
 <h1>Garhwali Model Journal</h1><div class="sub">Open Hindi/English ↔ Garhwali speech and text model, trained on the DGX Spark. Updates every 30 minutes. <span id="gen"></span></div>
 <div class="live" id="live"></div>
 <div class="tiles" id="tiles"></div>
+<h2>Activity</h2><div class="card" id="activity"></div><div class="card"><table id="queue"></table></div>
 <h2>Training loss by step</h2><div class="card"><div class="legend" id="lossleg"></div><div id="loss"></div><div class="sub">Lower is better. Each line is one run; loss is the model's average surprise per token on the training data.</div></div>
 <h2>Translation quality on the gold set (1,012 FLORES sentences)</h2><div class="card"><div id="scores"></div></div>
 <h2>Speech recognition: word error rate by epoch</h2><div class="card"><div class="legend" id="asrleg"></div><div id="asr"></div><div class="sub">Lower is better. Measured on 450 held-out Vaani field recordings. Published best for this test set ≈ 0.47.</div></div>
@@ -50,6 +53,11 @@ async function main(){const d=await (await fetch('status.json',{cache:'no-store'
  const best=d.scores.reduce((a,b)=>b.hin_chrf>(a?.hin_chrf??-1)?b:a,null);const zs=d.scores.find(s=>s.tag.includes('zeroshot'));
  const asrBest=Math.min(...d.asr.flatMap(r=>r.epochs.map(e=>e[1])));const asr0=d.asr[0]?.epochs[0]?.[1];const words=d.corpus.find(c=>c.file==='cpt_train_v2.jsonl')?.words??d.corpus[0]?.words;
  $('#tiles').innerHTML=[['Best Hindi→Garhwali chrF++',best?best.hin_chrf.toFixed(1):'–',zs?`from ${zs.hin_chrf} zero-shot · ${best.tag}`:''],['Best English→Garhwali chrF++',best?best.eng_chrf.toFixed(1):'–',zs?`from ${zs.eng_chrf} zero-shot`:''],['ASR word error rate',isFinite(asrBest)?asrBest.toFixed(3):'–',asr0?`from ${asr0.toFixed(3)} untouched adapter`:''],['Garhwali words in corpus',fmt(words||0),'deduplicated, normalised'],['Reviewer corrections',fmt(d.reviews),'from Deepak and parents']].map(([k,v,dd])=>`<div class=tile><div class=k>${k}</div><div class=v>${v}</div><div class=d>${dd}</div></div>`).join('');
+ const c=d.controller||{queue:[],log_tail:[]};const rj=c.running?c.queue.find(q=>q.id===c.running.id):null;
+ let act=rj?`<b>${rj.title}</b><div class=sub>started ${c.running.started}${c.paused?' · launching paused':''}</div>`:`<b>${c.paused?'Paused':'Idle'}</b><div class=sub>${c.queue.filter(q=>q.status==='pending').length} jobs waiting</div>`;
+ if(c.asr_live){const p=Math.round(100*c.asr_live.step/c.asr_live.total);act+=`<div class=live style="margin:10px 0 0;padding:8px 12px"><span>epoch ${c.asr_live.epoch}</span><div class=bar><i style="width:${p}%"></i></div><span>${fmt(c.asr_live.step)} / ${fmt(c.asr_live.total)} steps · loss ${c.asr_live.loss}</span></div>`}
+ if(c.log_tail&&c.log_tail.length)act+=`<pre>${c.log_tail.map(l=>l.replace(/</g,'&lt;')).join('\n')}</pre>`;$('#activity').innerHTML=act;
+ $('#queue').innerHTML=`<tr><th>job</th><th>status</th></tr>`+c.queue.map(q=>`<tr><td>${q.title}</td><td><span class="pill p-${q.status}">${q.status}</span></td></tr>`).join('');
  const ls=d.runs.filter(r=>r.loss.length).map(r=>({name:r.name.replace('qwen3-8b-',''),pts:r.loss}));legend($('#lossleg'),ls.map(s=>s.name));if(ls.length)lineChart($('#loss'),ls,{xl:'step',yl:'loss',x0:0,yd:2});
  $('#scores').innerHTML=`<table><tr><th>model</th><th>Hindi→Garhwali chrF++</th><th>BLEU</th><th>English→Garhwali chrF++</th><th>BLEU</th></tr>${d.scores.map(s=>`<tr><td>${s.tag}</td><td class="n ${s===best?'best':''}">${s.hin_chrf.toFixed(1)}</td><td class=n>${s.hin_bleu.toFixed(1)}</td><td class=n>${s.eng_chrf.toFixed(1)}</td><td class=n>${s.eng_bleu.toFixed(1)}</td></tr>`).join('')}</table>`;
  const as=d.asr.map(r=>({name:'round '+r.round.slice(1),pts:r.epochs.map(e=>[e[0],e[1]])}));legend($('#asrleg'),as.map(s=>s.name));if(as.length)lineChart($('#asr'),as,{xl:'epoch',yl:'WER',x0:0,y0:0.4,yd:2});
