@@ -31,8 +31,8 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 <h2>Activity</h2><div class="card" id="activity"></div><div class="card"><table id="queue"></table></div>
 <h2>Training loss by step</h2><div class="card"><div class="legend" id="lossleg"></div><div id="loss"></div><div class="sub">Lower is better. Each line is one run; loss is the model's average surprise per token on the training data.</div></div>
 <h2>Translation quality on the gold set (1,012 FLORES sentences)</h2><div class="card"><div id="scores"></div></div>
-<h2>Speech recognition: word error rate by epoch</h2><div class="card"><div class="legend" id="asrleg"></div><div id="asr"></div><div class="sub">Lower is better. Measured on 450 held-out Vaani field recordings. Published best for this test set ≈ 0.47.</div></div>
-<h2>Corpus</h2><div class="card"><div id="corpus"></div></div>
+<h2>Speech recognition: word error rate by epoch</h2><div class="card"><div class="legend" id="asrleg"></div><div id="asr"></div><div class="sub">Lower is better. Measured on 450 held-out Vaani field recordings. Published best for this test set ≈ 0.47. This chart changes only when a speech-recognition round finishes.</div></div>
+<h2>Corpus</h2><div class="card"><div id="corpus"></div><div class="sub">Changes when a data build lands.</div></div>
 <h2>Journal</h2><div class="card"><ul class="jl" id="journal"></ul></div>
 </div><div class="tip" id="tip"></div>
 <script>
