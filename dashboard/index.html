@@ -26,6 +26,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.75rem;font-weight:600}.p-done{background:color-mix(in oklab,var(--good) 18%,transparent);color:var(--good)}.p-running{background:color-mix(in oklab,var(--series-1) 18%,transparent);color:var(--series-1)}.p-pending{background:var(--grid);color:var(--text-muted)}.p-failed{background:color-mix(in oklab,var(--critical) 18%,transparent);color:var(--critical)}
 </style></head><body><div class="wrap">
 <h1>Garhwali Model Journal</h1><div class="sub">Open Hindi/English ↔ Garhwali speech and text model, trained on the DGX Spark. Updates every 10 minutes. <span id="gen"></span> · <a href="../learn/">Learn</a> · <a href="https://github.com/aptsalt/garhwali-review/blob/master/STUDY_PLAN.md">8-week plan</a></div>
+<div id="idle" hidden style="margin:14px 0;padding:12px 16px;border-radius:10px;border:2px solid var(--critical);color:var(--critical);font-weight:600"></div>
 <div class="live" id="live"></div>
 <div class="tiles" id="tiles"></div>
 <h2>Activity</h2><div class="card" id="activity"></div><div class="card"><table id="queue"></table></div>
@@ -49,6 +50,7 @@ function lineChart(el,series,opt){const W=900,H=300,m={l:48,r:16,t:12,b:30};cons
 function legend(el,names){el.innerHTML=names.map((n,i)=>`<span><i style="background:var(${cs[i%4]})"></i>${n}</span>`).join('')}
 async function main(){const d=await (await fetch('status.json',{cache:'no-store'})).json();$('#gen').textContent='Last update '+d.generated+'.';
  const cur=d.runs.find(r=>!r.done&&r.step>0)||d.runs[d.runs.length-1];const pct=cur.total?Math.round(100*cur.step/cur.total):0;
+ if(d.idle&&d.idle.idle){const el=$('#idle');el.hidden=false;el.textContent=`⚠ GPU idle — queue empty since ${d.idle.since}. Nothing is training; add a job to jobs/queue.jsonl.`}
  $('#live').innerHTML=`<span class=dot></span><b>${cur.done?'Last run':'Now training'}: ${cur.name}</b><span class=sub>${(d.controller&&d.controller.running)?'controller: '+d.controller.running.id:d.stage.replace(/^\[[^\]]*\]\s*/,'')}</span><div class=bar><i style="width:${pct}%"></i></div><span>${fmt(cur.step)} / ${fmt(cur.total)} steps (${pct}%)</span>${cur.eta_h!=null&&!cur.done?`<span class=sub>≈ ${cur.eta_h} h left · ${cur.s_per_it}s/step</span>`:''}${d.gpu_util!=null?`<span class=sub>GPU ${d.gpu_util}%</span>`:''}`;
  const fwd=d.scores.filter(s=>!s.tag.endsWith('-rev'));const rev=d.scores.filter(s=>s.tag.endsWith('-rev'));const best=fwd.reduce((a,b)=>b.hin_chrf>(a?.hin_chrf??-1)?b:a,null);const bestE=fwd.reduce((a,b)=>b.eng_chrf>(a?.eng_chrf??-1)?b:a,null);const bestR=rev.reduce((a,b)=>b.eng_chrf>(a?.eng_chrf??-1)?b:a,null);const zs=fwd.find(s=>s.tag==='qwen3-8b-zeroshot');
  const asrBest=Math.min(...d.asr.flatMap(r=>r.epochs.map(e=>e[1])));const asr0=d.asr[0]?.epochs[0]?.[1];const words=d.corpus.find(c=>c.file==='cpt_train_v2.jsonl')?.words??d.corpus[0]?.words;
